@@ -85,6 +85,25 @@
     header .onair{margin-left:0}
   }
 
+
+  /* ---------- Música a tocar ---------- */
+  .np{max-width:820px;margin:22px auto 0;display:grid;grid-template-columns:1.1fr 1fr;gap:16px}
+  .np[hidden]{display:none}
+  .np>div{background:var(--card);border-radius:var(--r);padding:16px;box-shadow:0 10px 24px #0004}
+  .npnow{display:flex;gap:16px;align-items:center}
+  .art{width:112px;height:112px;border-radius:12px;background:var(--card2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:42px;overflow:hidden}
+  .art img{width:100%;height:100%;object-fit:cover}
+  .lbl{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--mut);margin-bottom:6px}
+  .song{font-size:20px;font-weight:700;line-height:1.2}
+  .artist{color:#bfe6f7;margin-top:3px}
+  .src{font-size:11px;color:var(--mut);margin-top:10px}
+  #hist{list-style:none;margin:0;padding:0;max-height:200px;overflow:auto}
+  #hist li{display:flex;gap:10px;padding:7px 0;border-bottom:1px solid #ffffff10;font-size:14px}
+  #hist time{color:var(--glow);font-family:"Courier New",monospace;flex-shrink:0}
+  #hist .a{color:var(--mut)}
+  #hist .empty{color:var(--mut);border:0}
+  @media (max-width:640px){.np{grid-template-columns:1fr}}
+
   /* ---------- Lista ---------- */
   .bar{display:flex;gap:10px;margin:34px 0 14px;flex-wrap:wrap;align-items:center}
   .bar input[type=search]{flex:1;min-width:200px;padding:12px 14px;border-radius:12px;border:1px solid #24435b;background:var(--card);color:var(--txt);font-size:15px}
@@ -145,6 +164,23 @@
       </div>
     </div>
     <div class="status" id="statusTxt">Pronto</div>
+  </section>
+
+
+  <section class="np" id="np" hidden>
+    <div class="npnow">
+      <div class="art" id="art">🎵</div>
+      <div>
+        <div class="lbl">A tocar agora</div>
+        <div class="song" id="song">—</div>
+        <div class="artist" id="artist"></div>
+        <div class="src" id="npsrc"></div>
+      </div>
+    </div>
+    <div>
+      <div class="lbl">Já tocou</div>
+      <ol id="hist"></ol>
+    </div>
   </section>
 
   <div class="bar">
@@ -342,6 +378,139 @@ function noise(dur=0.35){
   }catch(e){}
 }
 
+
+/* ======== Música a tocar + histórico ======== */
+// Fontes: 1) Triton (rádios em streamtheworld.com, ex.: RFM, Renascença, Mega Hits) — traz histórico;
+//         2) título ICY enviado com a emissão (Icecast/Shoutcast); 3) ID3 nas emissões HLS (ex.: RTP).
+// Também guarda no navegador as músicas que foi apanhando enquanto ouvia.
+let metaTimer=null, metaAbort=null, metaToken=0, curSong=null;
+const artCache = {};
+const histKey = st => "rs_hist_"+st.stationuuid;
+const sameSong = (a,b) => a && b && (a.artist+"|"+a.title).toLowerCase()===(b.artist+"|"+b.title).toLowerCase();
+
+function stopMeta(){ clearInterval(metaTimer); metaTimer=null; if(metaAbort) metaAbort.abort(); metaToken++; }
+function startMeta(st, url){
+  stopMeta(); curSong=null;
+  const tok = metaToken;
+  $("np").hidden=false; showSong(null); renderHist(store.get(histKey(st),[]));
+  $("npsrc").textContent = "À procura da informação da música…";
+  const m = url.match(/streamtheworld\.com\/(?:[^/?]*\/)*([A-Za-z0-9_]+?)(?:_SC)?(?:\.(?:aac|mp3))?(?:\?|$)/);
+  let run = null;
+  if(m) run = () => triton(m[1].toUpperCase(), st, tok);
+  else if(!/\.m3u8/i.test(url)) run = () => icy(url, st, tok);
+  if(run){ run(); metaTimer = setInterval(run, 25000); }
+  setTimeout(()=>{ if(tok===metaToken && !curSong) $("npsrc").textContent = "Esta rádio não divulga a música que está a tocar."; }, 20000);
+}
+
+async function triton(mount, st, tok){
+  for(const mt of [...new Set([mount, mount.replace(/AAC$/,""), mount+"AAC"])]){
+    try{
+      const r = await fetch(`https://np.tritondigital.com/public/nowplaying?mountName=${mt}&numberToFetch=20&eventType=track`, {cache:"no-store"});
+      const doc = new DOMParser().parseFromString(await r.text(), "text/xml");
+      const items = [...doc.querySelectorAll("nowplaying-info")].map(n=>{
+        const p = k => (n.querySelector(`property[name="${k}"]`)?.textContent || "").trim();
+        return {title:p("cue_title"), artist:p("track_artist_name"), t:+p("cue_time_start") || (+n.getAttribute("timestamp")*1000) || Date.now()};
+      }).filter(x=>x.title).sort((a,b)=>b.t-a.t);
+      if(tok!==metaToken) return;
+      if(items.length){
+        mergeHist(st, items.slice(1));
+        gotSong(items[0], st, "Informação da rádio (Triton Digital)");
+        return;
+      }
+    }catch(e){}
+  }
+}
+
+async function icy(url, st, tok){
+  const ctrl = new AbortController(); metaAbort = ctrl;
+  try{
+    const r = await fetch(url, {headers:{"Icy-MetaData":"1"}, signal:ctrl.signal, cache:"no-store"});
+    const reader = r.body.getReader(), dec = new TextDecoder("utf-8");
+    let got = 0, buf = "";
+    while(got < 250000){
+      const {value, done} = await reader.read(); if(done) break;
+      got += value.length; buf = (buf + dec.decode(value,{stream:true})).slice(-4000);
+      const m = buf.match(/StreamTitle='(.*?)';/);
+      if(m){
+        ctrl.abort(); if(tok!==metaToken) return;
+        const s = m[1].trim(); if(!s) return;
+        const parts = s.split(" - ");
+        gotSong(parts.length>1 ? {artist:parts[0].trim(), title:parts.slice(1).join(" - ").trim()} : {artist:"", title:s}, st, "Informação enviada com a emissão");
+        return;
+      }
+    }
+    ctrl.abort();
+  }catch(e){
+    if(e.name!=="AbortError" && tok===metaToken){ clearInterval(metaTimer); } // servidor não permite — desiste
+  }
+}
+
+function id3(u8){
+  if(!u8 || u8[0]!==0x49 || u8[1]!==0x44 || u8[2]!==0x33) return null;
+  const ver = u8[3], end = 10 + ((u8[6]<<21)|(u8[7]<<14)|(u8[8]<<7)|u8[9]), out = {};
+  let i = 10;
+  while(i+10 <= Math.min(end,u8.length)){
+    const id = String.fromCharCode(u8[i],u8[i+1],u8[i+2],u8[i+3]);
+    const size = ver===4 ? ((u8[i+4]<<21)|(u8[i+5]<<14)|(u8[i+6]<<7)|u8[i+7]) : ((u8[i+4]<<24)|(u8[i+5]<<16)|(u8[i+6]<<8)|u8[i+7]);
+    if(!size || !/^[A-Z0-9]{4}$/.test(id)) break;
+    const body = u8.subarray(i+10, i+10+size);
+    if(id[0]==="T" && id!=="TXXX"){
+      const enc = body[0];
+      out[id] = new TextDecoder(enc===1?"utf-16":enc===2?"utf-16be":enc===3?"utf-8":"windows-1252").decode(body.subarray(1)).replace(/\0/g,"").trim();
+    }
+    i += 10 + size;
+  }
+  return out.TIT2 ? {title:out.TIT2, artist:out.TPE1||""} : null;
+}
+
+function gotSong(s, st, src){
+  if(!currentSt || st.stationuuid!==currentSt.stationuuid) return;
+  $("npsrc").textContent = src;
+  if(sameSong(s, curSong)) return;
+  if(curSong) mergeHist(st, [curSong]);
+  curSong = {...s, t:s.t||Date.now()};
+  showSong(curSong);
+}
+
+function mergeHist(st, list){
+  const all = [...list, ...store.get(histKey(st),[])].sort((a,b)=>b.t-a.t);
+  const out = [];
+  for(const x of all){
+    if(sameSong(x, curSong) && Math.abs(x.t-curSong.t) < 10*60e3) continue;
+    if(out.some(o => sameSong(o,x) && Math.abs(o.t-x.t) < 10*60e3)) continue;
+    out.push(x); if(out.length>=30) break;
+  }
+  store.set(histKey(st), out);
+  if(currentSt && st.stationuuid===currentSt.stationuuid) renderHist(out);
+}
+function renderHist(list){
+  const hm = t => new Date(t).toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit"});
+  $("hist").innerHTML = list.length
+    ? list.map(x=>`<li><time>${hm(x.t)}</time><span>${esc(x.title)}${x.artist?` <span class="a">— ${esc(x.artist)}</span>`:""}</span></li>`).join("")
+    : `<li class="empty">Ainda nada — as músicas vão aparecendo aqui à medida que tocam.</li>`;
+}
+
+async function coverFor(s){
+  const q = (s.artist+" "+s.title).trim();
+  if(q in artCache) return artCache[q];
+  try{
+    const j = await (await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&entity=song&limit=1&country=PT`)).json();
+    artCache[q] = j.results?.[0]?.artworkUrl100?.replace("100x100","300x300") || null;
+  }catch{ artCache[q] = null; }
+  return artCache[q];
+}
+async function showSong(s){
+  const art = $("art");
+  if(!s){ $("song").textContent="—"; $("artist").textContent=""; art.textContent="🎵"; return; }
+  $("song").textContent = s.title; $("artist").textContent = s.artist;
+  if("mediaSession" in navigator) navigator.mediaSession.metadata = new MediaMetadata({title:s.title, artist:s.artist||currentSt?.name||"", album:currentSt?.name?.trim()||"Rádio Secretaria"});
+  const url = await coverFor(s);
+  if(!sameSong(s, curSong)) return;
+  if(url){ art.innerHTML = `<img src="${esc(url)}" alt="">`;
+    if("mediaSession" in navigator) navigator.mediaSession.metadata = new MediaMetadata({title:s.title, artist:s.artist, album:currentSt?.name?.trim()||"", artwork:[{src:url,sizes:"300x300"}]});
+  } else art.textContent = "🎵";
+}
+
 /* ======== Leitor ======== */
 function setStatus(txt, live){
   $("statusTxt").textContent = txt;
@@ -362,15 +531,17 @@ function playIdx(i){
     hls = new Hls(); hls.loadSource(url); hls.attachMedia(audio);
     hls.on(Hls.Events.MANIFEST_PARSED, ()=>audio.play().catch(fail));
     hls.on(Hls.Events.ERROR, (e,d)=>{ if(d.fatal) fail(); });
+    hls.on(Hls.Events.FRAG_PARSING_METADATA, (e,d)=>{ for(const smp of d.samples||[]){ const s=id3(smp.data); if(s) gotSong(s, st, "Informação enviada com a emissão"); } });
   }else{ audio.src = url; audio.play().catch(fail); }
   fetch(SERVERS[0]+"/json/url/"+st.stationuuid).catch(()=>{});
+  startMeta(st, url);
   render();
   if("mediaSession" in navigator) navigator.mediaSession.metadata = new MediaMetadata({title:st.name.trim(), artist:"Rádio Secretaria"});
 }
-function fail(){ setStatus("Esta rádio não está disponível agora — rode para outra", false); }
+function fail(){ stopMeta(); setStatus("Esta rádio não está disponível agora — rode para outra", false); }
 audio.addEventListener("playing", ()=>setStatus("Em direto · "+(currentSt?.name.trim()||""), true));
 audio.addEventListener("waiting", ()=>setStatus("A carregar…", true));
-audio.addEventListener("pause",   ()=>setStatus("Em pausa", false));
+audio.addEventListener("pause",   ()=>{ setStatus("Em pausa", false); if(!hls) stopMeta(); });
 audio.addEventListener("error",   fail);
 
 $("play").onclick = ()=>{
