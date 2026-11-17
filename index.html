@@ -699,8 +699,14 @@ function setStatus(txt, live, tuning=false){
 }
 // Endereços a tentar, por ordem. Os servidores da StreamTheWorld (RFM, Renascença, Mega Hits…)
 // mudam com frequência; o endereço "livestream-redirect" encaminha sempre para um servidor ativo.
+// Rádios da Bauer (Comercial, M80, Cidade, Smooth, Batida): os endereços do diretório ficam muitas vezes
+// desatualizados, por isso tenta primeiro as emissões oficiais (HLS, e depois Icecast).
+const BAUER = {"comercial":"comercial","m80":"m80","cidade":"cidade","smooth":"smooth","batida":"batida"};
+const bauerOf = st => BAUER[fmKey(st.name)] || null;
 function candidatesFor(st){
-  const out = [];
+  const out = [], b = bauerOf(st);
+  if(b) out.push(`https://stream-hls.bauermedia.pt/${b}.aac/playlist.m3u8`,
+                 `https://stream-icy.bauermedia.pt/${b}.aac`, `https://stream-icy.bauermedia.pt/${b}.mp3`);
   for(const u of [st.url_resolved, st.url]){
     if(!u) continue;
     const m = u.match(/streamtheworld\.com\/(?:[^/?]*\/)*([A-Za-z0-9_]+?)(_SC)?(\.(?:aac|mp3))?(?:\?|$)/);
@@ -724,7 +730,7 @@ function playIdx(i){
   moveTuner(freqOf(current), !realFreq(st)); noise();
   st._cands = candidatesFor(st); st._ci = -1; st._alt = false;
   fetch(SERVERS[0]+"/json/url/"+st.stationuuid).catch(()=>{});
-  startMeta(st, st.url_resolved || st.url);
+  startMeta(st, bauerOf(st) ? `https://stream-icy.bauermedia.pt/${bauerOf(st)}.aac` : (st.url_resolved || st.url));
   render();
   if("mediaSession" in navigator) navigator.mediaSession.metadata = new MediaMetadata({title:st.name.trim(), artist:"Rádio Secretaria"});
   tryNext(st);
