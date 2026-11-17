@@ -325,7 +325,10 @@ async function loadDefault(){
     const out = [], names = new Set();
     const add = st => { const k = norm(st.name); if(!names.has(k)){ names.add(k); out.push(st); } };
     for(const name of DESTAQUE){
-      const m = list.find(st => usable(st) && norm(st.name).includes(norm(name)) && !names.has(norm(st.name)));
+      // primeiro a rádio com esse nome exato ("M80 Rádio"), só depois um canal com o nome dentro ("M80 Rádio – Ballads")
+      const k = fmKey(name), free = st => usable(st) && !names.has(norm(st.name));
+      const m = list.find(st => free(st) && fmKey(st.name) === k)
+             || list.find(st => free(st) && norm(st.name).includes(norm(name)));
       if(m) add(m);
     }
     for(const st of list){ if(out.length>=60) break; if(usable(st)) add(st); }
@@ -518,7 +521,7 @@ function startMeta(st, url){
   const m = url.match(/streamtheworld\.com\/(?:[^/?]*\/)*([A-Za-z0-9_]+?)(?:_SC)?(?:\.(?:aac|mp3))?(?:\?|$)/);
   let run = null;
   if(m) run = () => triton(m[1].toUpperCase(), st, tok);
-  else if(!/\.m3u8/i.test(url)) run = () => icy(url, st, tok);
+  else if(!/\.m3u8/i.test(url)) run = async () => { if(!(await icecastJson(url, st, tok))) await icy(url, st, tok); };
   if(run){ run(); metaTimer = setInterval(run, 25000); }
   setTimeout(()=>{ if(tok===metaToken && !curSong) $("npsrc").textContent = "Esta rádio não diz que música está a tocar."; }, 20000);
 }
@@ -542,6 +545,35 @@ async function triton(mount, st, tok){
   }
 }
 
+// Servidores Icecast: a página de estado pública (status-json.xsl) diz o título que está a tocar
+// e costuma deixar outros sites lê-la, ao contrário da própria emissão.
+const noJson = new Set();   // servidores sem essa página: não volta a perguntar
+async function icecastJson(url, st, tok){
+  let u; try{ u = new URL(url); }catch{ return false; }
+  if(noJson.has(u.origin)) return false;
+  try{
+    const ctrl = new AbortController(), t = setTimeout(()=>ctrl.abort(), 6000);
+    const r = await fetch(u.origin + "/status-json.xsl", {cache:"no-store", signal:ctrl.signal}); clearTimeout(t);
+    const j = await r.json();
+    let src = j.icestats && j.icestats.source; src = Array.isArray(src) ? src : src ? [src] : [];
+    const path = p => { try{ return new URL(p, u.origin).pathname.replace(/\/$/,""); }catch{ return ""; } };
+    const me = u.pathname.replace(/\/$/,"");
+    const s = src.find(x => x.listenurl && path(x.listenurl) === me) || (src.length === 1 ? src[0] : null);
+    const raw = String((s && (s.title || s.yp_currently_playing)) || "").trim();
+    if(!raw){ console.info("[Rádio] sem título no estado Icecast de", u.origin); return false; }
+    if(tok !== metaToken) return true;
+    const parts = raw.split(" - ");
+    const song = s.artist ? {artist:String(s.artist).trim(), title:raw}
+      : parts.length > 1 ? {artist:parts[0].trim(), title:parts.slice(1).join(" - ").trim()} : {artist:"", title:raw};
+    gotSong(song, st, "Informação enviada pela rádio");
+    return true;
+  }catch(e){
+    noJson.add(u.origin);
+    console.info("[Rádio] estado Icecast indisponível em", u.origin, "—", e.name || e);
+    return false;
+  }
+}
+
 async function icy(url, st, tok){
   const ctrl = new AbortController(); metaAbort = ctrl;
   try{
@@ -562,7 +594,7 @@ async function icy(url, st, tok){
     }
     ctrl.abort();
   }catch(e){
-    if(e.name!=="AbortError" && tok===metaToken){ clearInterval(metaTimer); } // servidor não permite — desiste
+    if(e.name!=="AbortError" && tok===metaToken){ clearInterval(metaTimer); console.info("[Rádio] a emissão não deixa ler o título:", url); } // servidor não permite — desiste
   }
 }
 
