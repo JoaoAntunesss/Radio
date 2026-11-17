@@ -518,35 +518,83 @@ function setStatus(txt, live){
   $("onair").classList.toggle("on", live); $("led").classList.toggle("on", live);
   $("speaker").classList.toggle("on", live); $("dial").classList.toggle("lit", live || !!currentSt);
 }
+// Endereços a tentar, por ordem. Os servidores da StreamTheWorld (RFM, Renascença, Mega Hits…)
+// mudam com frequência; o endereço "livestream-redirect" encaminha sempre para um servidor ativo.
+function candidatesFor(st){
+  const out = [];
+  for(const u of [st.url_resolved, st.url]){
+    if(!u) continue;
+    const m = u.match(/streamtheworld\.com\/(?:[^/?]*\/)*([A-Za-z0-9_]+?)(_SC)?(\.(?:aac|mp3))?(?:\?|$)/);
+    if(m){
+      const mount = m[1].toUpperCase(), ext = m[3] || (/AAC$/.test(mount) ? ".aac" : ".mp3");
+      out.push(`https://playerservices.streamtheworld.com/api/livestream-redirect/${mount}${ext}`);
+      if(mount.endsWith("AAC")) out.push(`https://playerservices.streamtheworld.com/api/livestream-redirect/${mount.slice(0,-3)}.mp3`);
+      else out.push(`https://playerservices.streamtheworld.com/api/livestream-redirect/${mount}AAC.aac`);
+    }
+    out.push(u);
+  }
+  return [...new Set(out)].filter(u => !httpsOnly || u.startsWith("https://"));
+}
+
+let playTok = 0, startTimer = null;
 function playIdx(i){
   if(!shown.length) return;
   current = (i+shown.length)%shown.length;
   const st = shown[current]; currentSt = st;
   $("nowName").textContent = st.name.trim();
   moveTuner(freqOf(current)); noise();
-  const url = st.url_resolved || st.url;
-  if(hls){ hls.destroy(); hls=null; }
-  audio.pause(); setStatus("A sintonizar…", false);
-  if(/\.m3u8(\?|$)/i.test(url) && window.Hls && Hls.isSupported()){
-    hls = new Hls(); hls.loadSource(url); hls.attachMedia(audio);
-    hls.on(Hls.Events.MANIFEST_PARSED, ()=>audio.play().catch(fail));
-    hls.on(Hls.Events.ERROR, (e,d)=>{ if(d.fatal) fail(); });
-    hls.on(Hls.Events.FRAG_PARSING_METADATA, (e,d)=>{ for(const smp of d.samples||[]){ const s=id3(smp.data); if(s) gotSong(s, st, "Informação enviada com a emissão"); } });
-  }else{ audio.src = url; audio.play().catch(fail); }
+  st._cands = candidatesFor(st); st._ci = -1; st._alt = false;
   fetch(SERVERS[0]+"/json/url/"+st.stationuuid).catch(()=>{});
-  startMeta(st, url);
+  startMeta(st, st.url_resolved || st.url);
   render();
   if("mediaSession" in navigator) navigator.mediaSession.metadata = new MediaMetadata({title:st.name.trim(), artist:"Rádio Secretaria"});
+  tryNext(st);
 }
-function fail(){ stopMeta(); setStatus("Esta rádio não está disponível agora — rode para outra", false); }
-audio.addEventListener("playing", ()=>setStatus("Em direto · "+(currentSt?.name.trim()||""), true));
+
+async function tryNext(st){
+  if(st !== currentSt) return;
+  st._ci++;
+  if(st._ci >= st._cands.length && !st._alt){
+    // último recurso: procurar outras entradas da mesma rádio no diretório
+    st._alt = true; setStatus("A procurar outro endereço desta rádio…", false);
+    try{
+      const alts = await api(`/json/stations/search?name=${encodeURIComponent(st.name.trim())}&hidebroken=true&order=clickcount&reverse=true&limit=10`);
+      if(st !== currentSt) return;
+      for(const a of alts) st._cands.push(...candidatesFor(a));
+      st._cands = [...new Set(st._cands)];
+    }catch(e){}
+  }
+  if(st._ci >= st._cands.length){ fail(); return; }
+  playUrl(st._cands[st._ci], st);
+}
+
+function playUrl(url, st){
+  const tok = ++playTok;
+  const bad = () => { if(tok===playTok && st===currentSt){ clearTimeout(startTimer); tryNext(st); } };
+  clearTimeout(startTimer);
+  startTimer = setTimeout(bad, 12000);              // se não começar a tocar em 12 s, tenta o seguinte
+  if(hls){ hls.destroy(); hls=null; }
+  audio.onerror = bad;
+  audio.removeAttribute("src"); audio.load();
+  setStatus(st._ci ? `A sintonizar… (tentativa ${st._ci+1})` : "A sintonizar…", false);
+  if(/\.m3u8(\?|$)/i.test(url) && window.Hls && Hls.isSupported()){
+    hls = new Hls(); hls.loadSource(url); hls.attachMedia(audio);
+    hls.on(Hls.Events.MANIFEST_PARSED, ()=>audio.play().catch(e=>{ if(e.name!=="AbortError") bad(); }));
+    hls.on(Hls.Events.ERROR, (e,d)=>{ if(d.fatal) bad(); });
+    hls.on(Hls.Events.FRAG_PARSING_METADATA, (e,d)=>{ for(const smp of d.samples||[]){ const s=id3(smp.data); if(s) gotSong(s, st, "Informação enviada com a emissão"); } });
+  }else{
+    audio.src = url;
+    audio.play().catch(e=>{ if(e.name==="NotAllowedError") setStatus("Carregue em ▶ para começar", false); else if(e.name!=="AbortError") bad(); });
+  }
+}
+function fail(){ clearTimeout(startTimer); stopMeta(); setStatus("Esta rádio não está disponível agora — rode para outra", false); }
+audio.addEventListener("playing", ()=>{ clearTimeout(startTimer); setStatus("Em direto · "+(currentSt?.name.trim()||""), true); });
 audio.addEventListener("waiting", ()=>setStatus("A carregar…", true));
-audio.addEventListener("pause",   ()=>{ setStatus("Em pausa", false); if(!hls) stopMeta(); });
-audio.addEventListener("error",   fail);
+audio.addEventListener("pause",   ()=>{ if(!audio.src || audio.ended) return; if(audio.readyState<3) return; setStatus("Em pausa", false); if(!hls) stopMeta(); });
 
 $("play").onclick = ()=>{
   if(current<0){ playIdx(0); return; }
-  if(audio.paused){ if(hls) audio.play(); else playIdx(current); } else audio.pause();
+  if(audio.paused){ if(hls) audio.play(); else playIdx(current); } else { audio.pause(); setStatus("Em pausa", false); if(!hls) stopMeta(); }
 };
 $("next").onclick = ()=>playIdx(current+1);
 $("prev").onclick = ()=>playIdx(current-1);
