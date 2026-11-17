@@ -1,4 +1,4 @@
-# 📻 Rádio Secretaria
+# 📻 Rádio da Secretaria
 
 Rádio online da **Subunidade Orgânica da Conservação — Secretaria** (Câmara Municipal de Matosinhos).
 
