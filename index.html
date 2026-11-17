@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Rádio da Secretaria · Conservação · Matosinhos</title>
-<meta name="theme-color" content="#00557f">
+<meta name="theme-color" content="#2a160b">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..800&display=swap" rel="stylesheet">
@@ -12,37 +12,47 @@
 <style>
 /* ===================================================================
    Rádio da Secretaria
-   Um rádio de mesa em baquelite cor de areia, pousado no azul do mar
-   de Matosinhos. A ousadia está no rádio; o resto é calmo.
+   Um rádio de mesa em baquelite cor de areia, ao pôr do sol na praia
+   de Matosinhos, junto ao Terminal de Cruzeiros. A ousadia está no rádio;
+   o resto é calmo.
    =================================================================== */
 :root{
-  --mar:#00557f;      /* fundo da página — azul municipal escurecido */
-  --mar-fundo:#00466a;/* zonas rebaixadas: pesquisa, histórico */
-  --azul:#009dd6;     /* azul Matosinhos: foco e seleção */
+  --mar:#2a160b;      /* fundo de recurso — areia molhada ao anoitecer */
+  --mar-fundo:#1e0f0799;/* vidro escuro: pesquisa, histórico, separadores */
+  --vidro:#1c0e0670;  /* painéis sobre a fotografia */
+  --azul:#ff8a2a;     /* laranja do pôr do sol: foco e seleção */
   --areia:#f2e4c9;    /* corpo do rádio */
   --areia-sombra:#d9c49e;
-  --tinta:#0b2f44;    /* texto sobre areia */
+  --tinta:#2e1709;    /* texto sobre areia */
   --ambar:#ffb13d;    /* luz do mostrador */
   --boia:#f0563e;     /* agulha e luz "no ar" */
   --branco:#ffffff;
-  --nevoa:#a9d3e8;    /* texto secundário sobre azul */
+  --nevoa:#f3d3a8;    /* texto secundário sobre o fundo */
+  --sombra:#14080266; /* sombras quentes */
   --f:"Archivo",system-ui,sans-serif;
 }
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--mar);color:var(--branco);font-family:var(--f);font-size:16px;line-height:1.5;min-height:100vh;
-  -webkit-font-smoothing:antialiased}
+  -webkit-font-smoothing:antialiased;position:relative;isolation:isolate}
+/* Fotografia de fundo fixa (funciona também em telemóveis, ao contrário de background-attachment:fixed) */
+body::before{content:"";position:fixed;inset:0;z-index:-1;
+  background:
+    linear-gradient(180deg,#1a0b04a6 0%,#1a0b0459 22%,#1a0b0426 42%,#1a0b0459 70%,#120802d9 100%),
+    url("fundo.jpg") 58% 62%/cover no-repeat,
+    var(--mar)}
 button{font:inherit;color:inherit}
 :focus-visible{outline:3px solid var(--ambar);outline-offset:3px;border-radius:6px}
 
 /* ---------- Topo ---------- */
 .top{max-width:1180px;margin:0 auto;padding:22px 28px 0;display:flex;align-items:center;gap:20px}
 .top img{height:34px;filter:brightness(0) invert(1)}
-.top .who{border-left:1px solid #ffffff40;padding-left:20px;line-height:1.25}
-.top .who b{display:block;font-weight:700;font-stretch:112%;font-size:17px}
-.top .who span{color:var(--nevoa);font-size:14px}
-.onair{margin-left:auto;display:flex;align-items:center;gap:9px;font-size:14px;color:var(--nevoa)}
-.onair i{width:12px;height:12px;border-radius:50%;background:#0a3a55;box-shadow:inset 0 1px 2px #0008;transition:.4s}
+.top .who{border-left:1px solid #ffffff55;padding-left:20px;line-height:1.25}
+.top .who b{display:block;font-weight:700;font-stretch:112%;font-size:17px;text-shadow:0 1px 10px #0007}
+.top .who span{color:var(--nevoa);font-size:14px;text-shadow:0 1px 8px #0008}
+.onair{margin-left:auto;display:flex;align-items:center;gap:9px;font-size:14px;color:var(--nevoa);
+  background:var(--mar-fundo);padding:6px 12px;border-radius:999px;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.onair i{width:12px;height:12px;border-radius:50%;background:#3a2112;box-shadow:inset 0 1px 2px #0008;transition:.4s}
 .onair.on{color:var(--branco)}
 .onair.on i{background:var(--boia);box-shadow:0 0 0 4px #f0563e33,0 0 14px var(--boia)}
 
@@ -52,7 +62,7 @@ button{font:inherit;color:inherit}
 /* O rádio */
 .radio{position:relative;padding:22px 24px 26px;border-radius:30px 30px 22px 22px;color:var(--tinta);
   background:linear-gradient(180deg,#f7ecd6 0%,var(--areia) 55%,#e8d5b1 100%);
-  box-shadow:0 2px 0 #fff8 inset,0 -8px 0 var(--areia-sombra) inset,0 28px 50px #00203566,0 6px 0 #00000026}
+  box-shadow:0 2px 0 #fff8 inset,0 -8px 0 var(--areia-sombra) inset,0 28px 50px #14080299,0 6px 0 #00000026}
 .radio::after{content:"";position:absolute;left:12%;right:12%;bottom:-14px;height:14px;
   background:radial-gradient(closest-side,#0006,transparent);filter:blur(4px);z-index:-1}
 .plate{display:flex;justify-content:space-between;align-items:baseline;padding:0 4px 14px}
@@ -64,7 +74,7 @@ button{font:inherit;color:inherit}
   background:
     repeating-linear-gradient(45deg,#ffffff10 0 2px,transparent 2px 5px),
     repeating-linear-gradient(-45deg,#00000022 0 2px,transparent 2px 5px),
-    linear-gradient(#0a6b98,#075a82);
+    linear-gradient(#6b3519,#4a2210);
   box-shadow:inset 0 3px 8px #0006,0 0 0 4px #e3cfa8,0 0 0 5px #c9b183}
 .speaker.on{animation:breathe .5s ease-in-out infinite alternate}
 @keyframes breathe{to{box-shadow:inset 0 3px 14px #000a,0 0 0 4px #e3cfa8,0 0 0 5px #c9b183}}
@@ -93,7 +103,7 @@ button{font:inherit;color:inherit}
 .key{width:40px;height:34px;border:0;border-radius:7px;cursor:pointer;background:linear-gradient(#fffaf0,#e7d6b5);color:var(--tinta);
   font-size:13px;box-shadow:0 3px 0 #b8a07a,0 5px 8px #5a462240;display:flex;align-items:center;justify-content:center}
 .key:active,.key[aria-pressed="true"]{transform:translateY(2px);box-shadow:0 1px 0 #b8a07a}
-.key.play{width:48px;background:linear-gradient(#0b6f9e,#085b84);color:#fff;box-shadow:0 3px 0 #053c58,0 5px 8px #5a462240}
+.key.play{width:48px;background:linear-gradient(#f39236,#d2661c);color:#fff;box-shadow:0 3px 0 #8a3f0f,0 5px 8px #5a462240}
 .key svg{width:14px;height:14px;fill:currentColor}
 .vol{display:flex;align-items:center;gap:6px;color:#6b5a3c;font-size:12px}
 .vol input{width:96px;accent-color:var(--tinta)}
@@ -101,22 +111,23 @@ button{font:inherit;color:inherit}
 
 /* A música */
 .np{min-width:0}
+.np{background:var(--vidro);border-radius:20px;padding:22px 24px 24px;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:0 0 0 1px #ffffff14}
 .np .where{color:var(--nevoa);font-size:15px;margin:0 0 18px}
 .np .row{display:flex;gap:22px;align-items:flex-end}
-.art{width:148px;height:148px;flex-shrink:0;border-radius:6px;overflow:hidden;background:#0a4a6e;position:relative;
-  box-shadow:0 18px 30px #00203566}
+.art{width:148px;height:148px;flex-shrink:0;border-radius:6px;overflow:hidden;background:#3b1d0c;position:relative;
+  box-shadow:0 18px 30px var(--sombra)}
 .art img{width:100%;height:100%;object-fit:cover;display:block}
 .art.empty::before{content:"";position:absolute;inset:22px;border-radius:50%;
-  background:radial-gradient(circle,#0a4a6e 0 9%,#062f47 9.5% 11%,#0d5b85 11.5% 32%,#083f5e 33% 100%);
+  background:radial-gradient(circle,#3b1d0c 0 9%,#1f0e05 9.5% 11%,#c8661f 11.5% 32%,#2a1309 33% 100%);
   box-shadow:0 0 0 1px #ffffff14}
 .song{font-weight:700;font-stretch:118%;font-size:clamp(28px,3.6vw,46px);line-height:1.02;letter-spacing:-.01em;margin:0;
-  overflow-wrap:anywhere;text-wrap:balance}
+  overflow-wrap:anywhere;text-wrap:balance;text-shadow:0 2px 18px #0006}
 .artist{font-size:20px;color:var(--areia);margin:8px 0 0}
 .src{font-size:13px;color:var(--nevoa);margin:16px 0 0}
 .np.swap .row{animation:swap .6s cubic-bezier(.2,.7,.2,1)}
 @keyframes swap{from{opacity:0;transform:translateY(10px)}}
 
-.hist-wrap{margin-top:30px;background:var(--mar-fundo);border-radius:14px;padding:16px 18px 6px}
+.hist-wrap{margin-top:22px;background:var(--mar-fundo);border-radius:14px;padding:16px 18px 6px}
 .hist-wrap h2{font-size:15px;font-weight:600;margin:0 0 6px;color:var(--nevoa)}
 #hist{list-style:none;margin:0;padding:0;max-height:236px;overflow:auto;scrollbar-width:thin;scrollbar-color:#ffffff33 transparent}
 #hist li{display:grid;grid-template-columns:52px 1fr;column-gap:10px;padding:9px 0;border-top:1px solid #ffffff14}
@@ -127,13 +138,15 @@ button{font:inherit;color:inherit}
 #hist .empty{display:block;color:var(--nevoa);font-size:14px;border:0;padding:6px 0 12px}
 
 /* ---------- Rádios ---------- */
-.list{max-width:1180px;margin:0 auto;padding:30px 28px 10px}
+.list{max-width:1180px;margin:20px auto 0;padding:28px 28px 18px;background:var(--vidro);border-radius:24px;
+  -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:0 0 0 1px #ffffff14}
+@media (min-width:1237px){.list{max-width:1124px}}
 .list-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:22px}
 .list-head h2{font-weight:700;font-stretch:112%;font-size:24px;margin:0 auto 0 0}
 .search{position:relative;flex:0 1 340px}
 .search input{width:100%;padding:11px 14px 11px 38px;border-radius:999px;border:1px solid #ffffff2e;background:var(--mar-fundo);color:#fff;font:inherit;font-size:15px}
-.search input::placeholder{color:#8fbcd4}
-.search input:focus{outline:none;border-color:var(--azul);box-shadow:0 0 0 3px #009dd655}
+.search input::placeholder{color:#e2bd8e}
+.search input:focus{outline:none;border-color:var(--azul);box-shadow:0 0 0 3px #ff8a2a55}
 .search svg{position:absolute;left:13px;top:50%;width:16px;height:16px;margin-top:-8px;fill:none;stroke:var(--nevoa);stroke-width:2}
 .tabs{display:flex;background:var(--mar-fundo);border-radius:999px;padding:4px}
 .chip{border:0;background:none;cursor:pointer;padding:7px 14px;border-radius:999px;font-size:14px;color:var(--nevoa)}
@@ -155,7 +168,7 @@ button{font:inherit;color:inherit}
 .fav.on{color:var(--ambar)}
 .msg{grid-column:1/-1;color:var(--nevoa);padding:26px 0}
 
-footer{max-width:1180px;margin:0 auto;padding:36px 28px 40px;color:var(--nevoa);font-size:13px}
+footer{max-width:1180px;margin:0 auto;padding:30px 28px 40px;color:var(--nevoa);font-size:13px;text-shadow:0 1px 6px #000a}
 footer a{color:inherit}
 
 /* ---------- Ecrãs pequenos ---------- */
@@ -168,6 +181,8 @@ footer a{color:inherit}
   .top .who{padding-left:12px}
   .onair{margin-left:0;width:100%}
   .stage,.list,footer{padding-left:18px;padding-right:18px}
+  .list{margin-left:10px;margin-right:10px;padding-left:12px;padding-right:12px}
+  .np{padding:18px 16px 20px}
   .radio{padding:16px 14px 20px}
   .face{grid-template-columns:1fr}
   .controls{flex-direction:row;flex-wrap:wrap;justify-content:center}

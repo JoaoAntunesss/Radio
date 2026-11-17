@@ -24,5 +24,5 @@ As rádios e os endereços de emissão vêm em direto da API pública e gratuita
 As frequências no mostrador são ilustrativas (posição de cada rádio na lista), não as frequências FM reais.
 
 ## Tecnologia
-Um único ficheiro HTML (HTML + CSS + JavaScript), sem instalação.
+Um único ficheiro HTML (HTML + CSS + JavaScript), sem instalação, mais a fotografia de fundo `fundo.jpg` (pôr do sol na praia de Matosinhos, junto ao Terminal de Cruzeiros).
 Usa [hls.js](https://github.com/video-dev/hls.js) para rádios em formato HLS.
