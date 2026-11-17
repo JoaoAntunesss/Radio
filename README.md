@@ -6,9 +6,14 @@ Um rádio antigo no navegador: mostrador FM com agulha, botão de sintonia que r
 
 ## Como usar
 - Abrir o `index.html` no navegador, ou o link do GitHub Pages.
-- Clicar numa rádio, ou arrastar o botão **SINTONIA**.
+- Clicar numa rádio, ou arrastar o botão **SINTONIA**. Enquanto a rádio liga, a agulha treme à procura da emissão.
 - Teclado: `←` / `→` mudam de rádio, `espaço` toca/pausa.
 - ☆ marca uma rádio como favorita (fica guardada no navegador).
+
+## Instalar como aplicação
+- **Computador (Chrome/Edge):** botão **Instalar** no topo da página, ou o ícone de instalar na barra de endereço. Fica com ícone no ambiente de trabalho e janela própria.
+- **Android (Chrome):** botão **Instalar**, ou menu ⋮ → *Adicionar ao ecrã principal*.
+- **iPhone/iPad (Safari):** botão Partilhar → *Adicionar ao ecrã principal*.
 
 ## Música a tocar e histórico
 Quando a rádio divulga essa informação, aparece a música que está a tocar (com capa do álbum) e a lista do que **já tocou**:
@@ -21,7 +26,7 @@ As rádios não divulgam publicamente a **próxima** música, por isso essa info
 
 ## De onde vêm as rádios
 As rádios e os endereços de emissão vêm em direto da API pública e gratuita [Radio Browser](https://api.radio-browser.info) — sem chave nem conta.
-As frequências no mostrador são ilustrativas (posição de cada rádio na lista), não as frequências FM reais.
+As frequências no mostrador são as FM reais na zona do Porto/Matosinhos (emissores do Monte da Virgem, Valongo e Matosinhos — fonte [radiomap.eu](https://radiomap.eu/pt/porto)). As rádios que só existem na internet (ex.: «M80 - 80's») aparecem como **Online**.
 
 ## Tecnologia
 Um único ficheiro HTML (HTML + CSS + JavaScript), sem instalação, mais a fotografia de fundo `fundo.jpg` (pôr do sol na praia de Matosinhos, junto ao Terminal de Cruzeiros).
